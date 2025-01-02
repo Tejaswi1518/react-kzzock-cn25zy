@@ -49,7 +49,8 @@ class App extends React.Component {
       let answer='',questionVal='';
       questionVal=format.test(question)?'ERROR ERROR.Use of special Character breaks the chatbot':question.replace(/you/gi, "me");
       if(format.test(question))
-        for (var i = 0; i < question.length; i++) {
+        var i = 0;
+        for (i = 0; i < question.length; i++) {
       this.setState((prevState) => ({
             specialCharUsed:true
         }));
