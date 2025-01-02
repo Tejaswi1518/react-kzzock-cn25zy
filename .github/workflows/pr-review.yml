@@ -21,21 +21,22 @@ jobs:
     - name: Install dependencies
       run: npm install axios
 
-    - name: Review JavaScript/JSX Files in Parallel
+    - name: Review JavaScript/JSX Files (Excluding node_modules)
       run: |
-        # Find all .js and .jsx files
-        find . -name "*.js" -or -name "*.jsx" > files_to_review.txt
+        # Find all .js and .jsx files, excluding node_modules directory
+        find . -name "*.js" -or -name "*.jsx" -not -path "*/node_modules/*" > files_to_review.txt
+
         FILES=()
         while IFS= read -r file; do
           FILES+=("$file")
         done < files_to_review.txt
 
-        # Process all files in parallel
+        # Process files in parallel
         for file in "${FILES[@]}"; do
           echo "Reviewing file: $file"
           FILE_CONTENT=$(cat "$file")
           echo "$FILE_CONTENT" > file_to_review.txt
-          
+
           # Run Node.js script for parallel execution
           node analyze-diff.js "$file" &
         done
