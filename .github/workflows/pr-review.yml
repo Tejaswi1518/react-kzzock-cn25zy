@@ -3,8 +3,8 @@ name: Code Review Suggestions
 on:
   pull_request:
     paths:
-      - '**/*.js'
-      - '**/*.jsx'
+      - 'app/**/*.js'   # Only includes .js files in the app folder
+      - 'app/**/*.jsx'  # Only includes .jsx files in the app folder
 
 jobs:
   review:
@@ -21,11 +21,11 @@ jobs:
     - name: Install dependencies
       run: npm install axios
 
-    - name: Review JavaScript/JSX Files (Excluding node_modules)
+    - name: Review JavaScript/JSX Files in App Folder
       run: |
-        # Find all .js and .jsx files, excluding node_modules directory
-        find . -name "*.js" -or -name "*.jsx" -not -path "*/node_modules/*" > files_to_review.txt
-
+        # Find all .js and .jsx files under the app folder
+        find app -name "*.js" -or -name "*.jsx" > files_to_review.txt
+        
         FILES=()
         while IFS= read -r file; do
           FILES+=("$file")
