@@ -1,37 +1,26 @@
 const fs = require('fs');
 const axios = require('axios');
 
+// Function to send code to OpenAI and get suggestions
 async function getSuggestions(code) {
   const apiKey = process.env.OPENAI_API_KEY;
-  const url = 'https://api.openai.com/v1/chat/completions';
+  const url = 'https://api.openai.com/v1/completions';
 
   try {
-    const response = await axios.post(
-      url,
-      {
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a code reviewer that provides suggestions to improve code quality.',
-          },
-          {
-            role: 'user',
-            content: `Please review the following code and provide suggestions for improvement:\n\n${code}`,
-          },
-        ],
+    const response = await axios.post(url, {
+      model: 'text-davinci-003', // You can use a different model if preferred
+      prompt: `Please review the following JavaScript/JSX code and provide suggestions for improvement:\n\n${code}`,
+      max_tokens: 500,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-      }
-    );
+    });
 
-    return response.data.choices[0].message.content;
+    return response.data.choices[0].text.trim();
   } catch (error) {
-    console.error('Error fetching suggestions:', error);
+    console.error('Error:', error);
     return 'Error fetching suggestions from OpenAI.';
   }
 }
