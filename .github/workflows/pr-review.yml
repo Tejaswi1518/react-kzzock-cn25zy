@@ -1,9 +1,9 @@
-name: PR Code Review
+name: Code Review Suggestions
 
 on:
   pull_request:
     paths:
-      - '**/*.js'  # Trigger for JavaScript files
+      - '**/*.js'
       - '**/*.jsx'
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout the code
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up Node.js
@@ -19,18 +19,78 @@ jobs:
       with:
         node-version: '16'
 
-    - name: Install Dependencies
-      run: npm install
-
-    - name: Run ESLint
-      run: npx eslint . || true
-
-    - name: Post PR Comment
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get Pull Request Diff
+      id: get_diff
       run: |
-        if [ -f eslint-report.txt ]; then
-          gh pr comment --body "$(cat eslint-report.txt)"
-        else
-          echo "No issues found"
-        fi
+        PR_NUMBER=${{ github.event.pull_request.number }}
+        BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+        HEAD_BRANCH=${{ github.event.pull_request.head.ref }}
+
+        # Fetch the diff between the base and head branches
+        git fetch origin $BASE_BRANCH:$BASE_BRANCH
+        git fetch origin $HEAD_BRANCH:$HEAD_BRANCH
+        DIFF=$(git diff origin/$BASE_BRANCH..origin/$HEAD_BRANCH)
+
+        # Save the diff to a file
+        echo "$DIFF" > pr_diff.txt
+
+    - name: Analyze Code Diff for Suggestions
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        const fs = require('fs');
+        const axios = require('axios');
+
+        async function getSuggestions(code) {
+          const apiKey = process.env.OPENAI_API_KEY;
+          const url = 'https://api.openai.com/v1/chat/completions';
+
+          try {
+            const response = await axios.post(
+              url,
+              {
+                model: 'gpt-4',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a code reviewer that provides suggestions to improve code quality.',
+                  },
+                  {
+                    role: 'user',
+                    content: `Please review the following code diff and provide suggestions for improvement:\n\n${code}`,
+                  },
+                ],
+              },
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${apiKey}`,
+                },
+              }
+            );
+
+            return response.data.choices[0].message.content;
+          } catch (error) {
+            console.error('Error fetching suggestions:', error);
+            return 'Error fetching suggestions from OpenAI.';
+          }
+        }
+
+        // Read the diff file
+        const codeToReview = fs.readFileSync('pr_diff.txt', 'utf8');
+
+        // Get suggestions from OpenAI
+        const suggestions = await getSuggestions(codeToReview);
+
+        // Save the suggestions to a file
+        fs.writeFileSync('code-review-suggestions.txt', suggestions);
+        console.log('Suggestions saved to code-review-suggestions.txt');
+
+    - name: Post Review Suggestions as PR Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        message: |
+          ## Code Review Suggestions for Diff
+          ```txt
+          $(cat code-review-suggestions.txt)
+          ```
