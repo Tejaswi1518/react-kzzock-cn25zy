@@ -1,9 +1,6 @@
 name: Code Review Suggestions
 
 on:
-  push:
-    branches:
-      - main  # Runs on pushes to the main branch, or change it to your preferred branch.
   pull_request:
     paths:
       - '**/*.js'
@@ -12,7 +9,6 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -25,26 +21,17 @@ jobs:
     - name: Install dependencies
       run: npm install axios
 
-    - name: Collect All JavaScript and JSX Files
-      id: collect_files
+    - name: Review JavaScript/JSX Files
       run: |
-        # Find all .js and .jsx files and save them in a list
+        # Find all .js and .jsx files and review them using OpenAI
         find . -name "*.js" -or -name "*.jsx" > files_to_review.txt
-
-    - name: Review Each File Separately
-      run: |
-        # For each file, send its content for review
         while IFS= read -r file; do
           if [[ -f "$file" ]]; then
             echo "Reviewing file: $file"
-
-            # Read the file content
             FILE_CONTENT=$(cat "$file")
-            
-            # Save the file content to a temporary file for analysis
             echo "$FILE_CONTENT" > file_to_review.txt
 
-            # Run the Node.js script to analyze the file content
+            # Run Node.js script to get review suggestions
             node analyze-diff.js
 
             # Post review suggestions as PR comment
@@ -60,7 +47,7 @@ jobs:
           fi
         done < files_to_review.txt
 
-    - name: Post All Review Comments as PR Comment
+    - name: Post Review Comments to PR
       uses: marocchino/sticky-pull-request-comment@v2
       with:
         message: |
