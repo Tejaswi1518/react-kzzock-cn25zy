@@ -60,6 +60,7 @@ class App extends React.Component {
         return (
             <div>
                 <Chat user={this.user}
+                id = {this.user.id}
                     messages={this.state.messages}
                     onMessageSend={this.addNewMessage}
                     placeholder={"Type a message..."}
