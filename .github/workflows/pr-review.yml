@@ -21,31 +21,25 @@ jobs:
     - name: Install dependencies
       run: npm install axios
 
-    - name: Review JavaScript/JSX Files
+    - name: Review JavaScript/JSX Files in Parallel
       run: |
-        # Find all .js and .jsx files and review them using OpenAI
+        # Find all .js and .jsx files
         find . -name "*.js" -or -name "*.jsx" > files_to_review.txt
+        FILES=()
         while IFS= read -r file; do
-          if [[ -f "$file" ]]; then
-            echo "Reviewing file: $file"
-            FILE_CONTENT=$(cat "$file")
-            echo "$FILE_CONTENT" > file_to_review.txt
-
-            # Run Node.js script to get review suggestions
-            node analyze-diff.js
-
-            # Post review suggestions as PR comment
-            COMMENT=$(cat code-review-suggestions.txt)
-            if [[ -n "$COMMENT" ]]; then
-              echo "Posting comment for file: $file"
-              echo "## Code Review Suggestions for $file" >> pr_comments.md
-              echo "```txt" >> pr_comments.md
-              echo "$COMMENT" >> pr_comments.md
-              echo "```" >> pr_comments.md
-              echo "" >> pr_comments.md
-            fi
-          fi
+          FILES+=("$file")
         done < files_to_review.txt
+
+        # Process all files in parallel
+        for file in "${FILES[@]}"; do
+          echo "Reviewing file: $file"
+          FILE_CONTENT=$(cat "$file")
+          echo "$FILE_CONTENT" > file_to_review.txt
+          
+          # Run Node.js script for parallel execution
+          node analyze-diff.js "$file" &
+        done
+        wait
 
     - name: Post Review Comments to PR
       uses: marocchino/sticky-pull-request-comment@v2
