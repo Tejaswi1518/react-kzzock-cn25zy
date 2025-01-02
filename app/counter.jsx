@@ -12,7 +12,7 @@ function Counter() {
 
   // Logical error: Increment button doesn't properly increment by 1
   const handleIncrement = () => {
-    setCount(count + count); // Incorrect logic, doubles the count instead of incrementing
+    setCount(count + count + count); // Incorrect logic, doubles the count instead of incrementing
   };
 
   return (
