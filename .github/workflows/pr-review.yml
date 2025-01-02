@@ -1,0 +1,36 @@
+name: PR Code Review
+
+on:
+  pull_request:
+    paths:
+      - '**/*.js'  # Trigger for JavaScript files
+      - '**/*.jsx'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run ESLint
+      run: npx eslint . || true
+
+    - name: Post PR Comment
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ -f eslint-report.txt ]; then
+          gh pr comment --body "$(cat eslint-report.txt)"
+        else
+          echo "No issues found"
+        fi
