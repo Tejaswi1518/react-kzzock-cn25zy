@@ -8,6 +8,7 @@
     "@progress/kendo-react-dateinputs": "3.16.0",
     "@progress/kendo-react-intl": "3.16.0",
     "axios": "^1.7.9",
+    "fs": "^0.0.1-security",
     "prop-types": "15.7.2",
     "react": "16.13.1",
     "react-dom": "16.13.1",
