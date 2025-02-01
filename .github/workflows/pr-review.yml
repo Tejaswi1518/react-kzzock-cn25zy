@@ -1,49 +1,59 @@
-name: Code Review Suggestions
+name: PR Code Review
 
 on:
   pull_request:
-    paths:
-      - 'app/**/*.js'   # Only includes .js files in the app folder
-      - 'app/**/*.jsx'  # Only includes .jsx files in the app folder
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  review:
+  review_code:
+    name: Review PR Code
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
+      - name: Get Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: app/**/*.js, app/**/*.jsx
 
-    - name: Install dependencies
-      run: npm install axios
+      - name: Analyze Code with OpenAI
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Reviewing changed files..."
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Reviewing file: $file"
 
-    - name: Review JavaScript/JSX Files in App Folder
-      run: |
-        # Find all .js and .jsx files under the app folder
-        find app -name "*.js" -or -name "*.jsx" > files_to_review.txt
-        
-        FILES=()
-        while IFS= read -r file; do
-          FILES+=("$file")
-        done < files_to_review.txt
+            # Read file content
+            CONTENT=$(cat "$file" | base64)
 
-        # Process files in parallel
-        for file in "${FILES[@]}"; do
-          echo "Reviewing file: $file"
-          FILE_CONTENT=$(cat "$file")
-          echo "$FILE_CONTENT" > file_to_review.txt
+            # Call OpenAI API for code review
+            RESPONSE=$(curl -s -X POST "https://api.openai.com/v1/chat/completions" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "model": "gpt-4",
+                "messages": [
+                  {"role": "system", "content": "You are a code reviewer. Find logical, security, and performance defects in the following JavaScript/React code and suggest improvements."},
+                  {"role": "user", "content": "'"$(echo "$CONTENT" | base64 --decode)"'"}
+                ],
+                "temperature": 0.2
+              }')
 
-          # Run Node.js script for parallel execution
-          node analyze-diff.js "$file" &
-        done
-        wait
+            # Extract AI response
+            COMMENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
 
-    - name: Post Review Comments to PR
-      uses: marocchino/sticky-pull-request-comment@v2
-      with:
-        message: |
-          $(cat pr_comments.md)
+            # Post comment in PR
+            if [[ ! -z "$COMMENT" ]]; then
+              gh pr comment ${{ github.event.pull_request.number }} -b "**Code Review ($file):**\n$COMMENT"
+            fi
+          done
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
